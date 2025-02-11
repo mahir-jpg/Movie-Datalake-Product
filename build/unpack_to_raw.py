@@ -1,67 +1,74 @@
 import os
-import pandas as pd
-import boto3
+import shutil
+import argparse
+from pathlib import Path
 
-# Configuration
-def merge_and_upload(source_dirs, bucket, endpoint):
+import boto3
+from huggingface_hub import snapshot_download
+
+# Nom du repo Hugging Face
+REPO_ID = "MansaT/Movie-Dataset"
+
+def upload_directory_to_s3(local_dir: str, bucket: str, s3_client):
     """
-    Fusionne les fichiers CSV des dossiers source et les upload vers S3.
-    
+    Parcourt un dossier local et upload tous les fichiers qu'il contient (récursivement)
+    vers un bucket S3 sous un préfixe donné.
+    """
+    local_dir_path = Path(local_dir)
+    for file_path in local_dir_path.rglob('*'):
+        if file_path.is_file():
+            # Calcul du chemin relatif pour respecter l'arborescence
+            relative_path = file_path.relative_to(local_dir_path)
+            s3_key = f"{relative_path}".replace('\\', '/')
+            
+            s3_client.upload_file(str(file_path), bucket, s3_key)
+            print(f"Uploaded {file_path} to s3://{bucket}/{s3_key}")
+
+
+def download_and_upload_raw(bucket: str, endpoint: str, only_csv: bool = True):
+    """
+    Télécharge les données brutes depuis Hugging Face et les uploade telles quelles
+    dans un bucket S3, sans aucune transformation.
+
     Args:
-    - source_dirs (list): Liste des dossiers contenant les fichiers à fusionner.
-    - bucket (str): Nom du bucket S3 de destination.
-    - endpoint (str): URL de l'endpoint LocalStack.
+        bucket (str): Nom du bucket S3 où stocker les données brutes.
+        endpoint (str): URL de l'endpoint (ex: LocalStack).
+        only_csv (bool): Si True, ne télécharge que les fichiers CSV.
     """
     s3_client = boto3.client("s3", endpoint_url=endpoint)
 
-    # Initialisation des DataFrames pour les fichiers combinés
-    movies_df = pd.DataFrame()
-    reviews_df = pd.DataFrame()
+    # Répertoire local temporaire (cache)
+    local_cache_dir = "./hf_cache"
 
-    for source_dir in source_dirs:
-        for file_name in os.listdir(source_dir):
-            if file_name.endswith(".csv"):
-                file_path = os.path.join(source_dir, file_name)
-                
-                # Lire le fichier CSV
-                df = pd.read_csv(file_path)
-                
-                # Fusionner les fichiers dans la bonne catégorie
-                if "movies" in source_dir.lower():
-                    movies_df = pd.concat([movies_df, df], ignore_index=True)
-                elif "reviews" in source_dir.lower():
-                    # Extraire le titre du film à partir du nom du fichier
-                    movie_title = os.path.splitext(file_name)[0]
-                    df["movie_title"] = movie_title  # Ajouter une colonne avec le titre
-                    reviews_df = pd.concat([reviews_df, df], ignore_index=True)
-    
-    # Exporter les fichiers fusionnés en CSV temporaires
-    movies_csv = "all_movies.csv"
-    reviews_csv = "all_reviews.csv"
-    movies_df.to_csv(movies_csv, sep=';', index=False)
-    reviews_df.to_csv(reviews_csv, sep=';', index=False)
-    
-    # Upload les fichiers fusionnés vers le bucket S3
-    s3_client.upload_file(movies_csv, bucket, "all_movies.csv")
-    print(f"Uploaded {movies_csv} to s3://{bucket}/all_movies.csv")
-    
-    s3_client.upload_file(reviews_csv, bucket, "all_reviews.csv")
-    print(f"Uploaded {reviews_csv} to s3://{bucket}/all_reviews.csv")
+    # Options pour snapshot_download
+    allow_patterns = ["*.csv"] if only_csv else None
 
-    # Supprimer les fichiers temporaires
-    os.remove(movies_csv)
-    os.remove(reviews_csv)
+    # 1) Télécharge le repo Hugging Face dans un dossier local.
+    #    - Si only_csv=True, on ne prend que les fichiers CSV.
+    local_repo_dir = snapshot_download(
+        repo_id=REPO_ID,
+        repo_type="dataset",
+        local_dir=local_cache_dir,
+        allow_patterns=allow_patterns
+    )
+
+    # 2) Upload de tout le contenu téléchargé vers S3
+    upload_directory_to_s3(local_repo_dir, bucket, s3_client=s3_client)
+
+    # 3) Nettoyage du répertoire local
+    shutil.rmtree(local_repo_dir, ignore_errors=True)
+
 
 if __name__ == "__main__":
-    import argparse
-
-    # Argument parser
-    parser = argparse.ArgumentParser(description="Fusionner et uploader des CSV vers S3")
-    parser.add_argument("--source_dirs", nargs="+", required=True, help="Dossiers contenant les fichiers à traiter")
+    parser = argparse.ArgumentParser(description="Télécharger depuis Hugging Face et uploader tel quel dans S3.")
     parser.add_argument("--bucket", required=True, help="Nom du bucket S3 de destination")
-    parser.add_argument("--endpoint", required=True, help="Endpoint LocalStack")
+    parser.add_argument("--endpoint", required=True, help="Endpoint LocalStack (ou autre)")
+
+    # Option facultative pour ne pas restreindre aux CSV uniquement
+    parser.add_argument("--all_files", action="store_true",
+                        help="Si spécifié, télécharge tous les fichiers du repo (pas seulement les CSV).")
 
     args = parser.parse_args()
 
-    # Appeler la fonction principale
-    merge_and_upload(args.source_dirs, args.bucket, args.endpoint)
+    # only_csv = False si l'utilisateur a mis --all_files
+    download_and_upload_raw(args.bucket, args.endpoint, only_csv=not args.all_files)

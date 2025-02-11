@@ -1,0 +1,51 @@
+version: "3.9"
+
+services:
+  # 1. LocalStack : stockage objet S3 simulé en local
+  localstack:
+    image: localstack/localstack:2.0
+    container_name: localstack
+    ports:
+      - "4566:4566"     # Port unifié pour les APIs LocalStack
+    environment:
+      - SERVICES=s3     # Active uniquement le service S3
+      - DEBUG=1         # Log en mode debug (optionnel)
+      - DATA_DIR=/var/lib/localstack/data
+    volumes:
+      - ./localstack_data:/var/lib/localstack  # Persistance locale
+    
+
+  # 2. MySQL : base relationnelle pour la couche Staging
+  mysql:
+    image: mysql:8
+    container_name: mysql
+    ports:
+      - "3306:3306"
+    environment:
+      - MYSQL_ROOT_PASSWORD=root
+      - MYSQL_DATABASE=staging_db
+      - MYSQL_USER=user
+      - MYSQL_PASSWORD=password
+    volumes:
+      - ./mysql_data:/var/lib/mysql
+    
+
+  # 3. Elasticsearch : moteur de recherche pour la couche Curated
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.6.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node           # Permet un cluster mono-noeud
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m       # Limite mémoire JVM
+      - xpack.security.enabled=false         # Désactive la sécurité par défaut
+      - xpack.security.http.ssl.enabled=false
+    ports:
+      - "9200:9200"   # REST API Elasticsearch
+      - "9300:9300"   # Communication interne (cluster)
+    volumes:
+      - ./es_data:/usr/share/elasticsearch/data
+
+volumes:
+  localstack_data:
+  mysql_data:
+  es_data:
