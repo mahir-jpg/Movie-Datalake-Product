@@ -6,7 +6,7 @@ from pathlib import Path
 import boto3
 from huggingface_hub import snapshot_download
 
-# Nom du repo Hugging Face
+# Repo Huggingface contenant les données
 REPO_ID = "MansaT/Movie-Dataset"
 
 def upload_directory_to_s3(local_dir: str, bucket: str, s3_client):
@@ -40,11 +40,11 @@ def download_and_upload_raw(bucket: str, endpoint: str, only_csv: bool = True):
     # Répertoire local temporaire (cache)
     local_cache_dir = "./hf_cache"
 
-    # Options pour snapshot_download
+    # Option pour ne traiter que les csv
     allow_patterns = ["*.csv"] if only_csv else None
 
     # 1) Télécharge le repo Hugging Face dans un dossier local.
-    #    - Si only_csv=True, on ne prend que les fichiers CSV.
+    #    only_csv=True, on ne prend que les fichiers CSV.
     local_repo_dir = snapshot_download(
         repo_id=REPO_ID,
         repo_type="dataset",
@@ -64,7 +64,7 @@ if __name__ == "__main__":
     parser.add_argument("--bucket", required=True, help="Nom du bucket S3 de destination")
     parser.add_argument("--endpoint", required=True, help="Endpoint LocalStack (ou autre)")
 
-    # Option facultative pour ne pas restreindre aux CSV uniquement
+    # Option pour ne pas restreindre aux CSV uniquement
     parser.add_argument("--all_files", action="store_true",
                         help="Si spécifié, télécharge tous les fichiers du repo (pas seulement les CSV).")
 
