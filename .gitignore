@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+env/
+.DS_Store
+.env
+.csv
+localstack_data/
+mysql_data/
+es_data/

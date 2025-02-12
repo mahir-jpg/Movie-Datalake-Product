@@ -4,7 +4,6 @@ services:
   # 1. LocalStack : stockage objet S3 simulé en local
   localstack:
     image: localstack/localstack:2.0
-    container_name: localstack
     ports:
       - "4566:4566"     # Port unifié pour les APIs LocalStack
     environment:
@@ -18,7 +17,6 @@ services:
   # 2. MySQL : base relationnelle pour la couche Staging
   mysql:
     image: mysql:8
-    container_name: mysql
     ports:
       - "3306:3306"
     environment:
@@ -33,7 +31,6 @@ services:
   # 3. Elasticsearch : moteur de recherche pour la couche Curated
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.6.0
-    container_name: elasticsearch
     environment:
       - discovery.type=single-node           # Permet un cluster mono-noeud
       - ES_JAVA_OPTS=-Xms512m -Xmx512m       # Limite mémoire JVM

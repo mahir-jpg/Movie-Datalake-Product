@@ -14,7 +14,7 @@ def upload_directory_to_s3(local_dir: str, bucket: str, s3_client):
     Parcourt un dossier local et upload tous les fichiers qu'il contient (récursivement)
     vers un bucket S3 sous un préfixe donné.
     """
-    local_dir_path = Path(local_dir)
+    local_dir_path = Path(local_dir)/"data"
     for file_path in local_dir_path.rglob('*'):
         if file_path.is_file():
             # Calcul du chemin relatif pour respecter l'arborescence
@@ -49,8 +49,9 @@ def download_and_upload_raw(bucket: str, endpoint: str, only_csv: bool = True):
         repo_id=REPO_ID,
         repo_type="dataset",
         local_dir=local_cache_dir,
-        allow_patterns=allow_patterns
-    )
+        allow_patterns=allow_patterns,
+        ignore_patterns=[".cache/*"]
+        )
 
     # 2) Upload de tout le contenu téléchargé vers S3
     upload_directory_to_s3(local_repo_dir, bucket, s3_client=s3_client)
