@@ -5,25 +5,24 @@ import re
 import boto3
 import mysql.connector
 
-# ---------------------------------------------------------------------
 # Paramètres de connexion MySQL
-# ---------------------------------------------------------------------
+#############################################
 DB_HOST = "localhost"
 DB_USER = "user"
 DB_PASSWORD = "password"
 DB_NAME = "staging_db"
 
-# ---------------------------------------------------------------------
+
 # Paramètres pour LocalStack (S3)
-# ---------------------------------------------------------------------
+#############################################
 S3_ENDPOINT_URL = "http://localhost:4566"
 AWS_ACCESS_KEY_ID = "root"
 AWS_SECRET_ACCESS_KEY = "root"
 BUCKET_NAME = "raw"
 
-# ---------------------------------------------------------------------
+
 # Dossiers S3
-# ---------------------------------------------------------------------
+###############################################
 MOVIES_PREFIX = "1_movies_per_genre/"
 REVIEWS_PREFIX = "2_reviews_per_movie_raw/"
 
@@ -48,9 +47,9 @@ def get_s3_client():
     )
 
 
-# ---------------------------------------------------------------------
-# Insertions MOVIES (inchangées, car moins volumineuses)
-# ---------------------------------------------------------------------
+
+# Insertions MOVIES 
+##################################################
 def insert_movie(row, cursor):
     """
     Insère un film dans la table 'movies'
@@ -104,9 +103,9 @@ def process_movies_csv(s3_client, db_cursor, key):
         insert_movie(row, db_cursor)
 
 
-# ---------------------------------------------------------------------
-# Insertions REVIEWS (Bulk Insert)
-# ---------------------------------------------------------------------
+
+# Insertions REVIEWS (utilisation de Bulk Insert pour accelérer le traitement)
+########################################################
 
 def bulk_insert_reviews(review_rows, film_title, cursor):
     """
@@ -192,10 +191,39 @@ def process_reviews_csv(s3_client, db_conn, db_cursor, key):
         db_conn.commit()
         batch.clear()
 
+def list_all_objects(s3_client, bucket, prefix):
+    """
+    Retourne la liste complète (tous les objets) pour un Bucket/Prefix, en gérant la pagination s3 (list_objects_v2 est limitée a 1000 éléments)
+    """
+    all_objects = []
+    continuation_token = None
 
-# ---------------------------------------------------------------------
+    while True:
+        if continuation_token:
+            resp = s3_client.list_objects_v2(
+                Bucket=bucket,
+                Prefix=prefix,
+                ContinuationToken=continuation_token
+            )
+        else:
+            resp = s3_client.list_objects_v2(
+                Bucket=bucket,
+                Prefix=prefix
+            )
+
+        if 'Contents' in resp:
+            all_objects.extend(resp['Contents'])
+
+        if resp.get('IsTruncated'):
+            continuation_token = resp.get('NextContinuationToken')
+        else:
+            break
+
+    return all_objects
+
+
 # MAIN
-# ---------------------------------------------------------------------
+#########################################################
 def main():
     db_conn = get_db_connection()
     cursor = db_conn.cursor()
@@ -211,14 +239,13 @@ def main():
                 db_conn.commit()
 
     # 2) Charger les reviews (bulk insert par batch de 1000)
-    resp_reviews = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix=REVIEWS_PREFIX)
-    if 'Contents' in resp_reviews:
-        for item in resp_reviews['Contents']:
-            key = item['Key']
-            if key.endswith(".csv"):
-                process_reviews_csv(s3_client, db_conn, cursor, key)
-                # plus besoin de commit ici tout de suite : process_reviews_csv() gère les commits par batch
-
+    resp_reviews = list_all_objects(s3_client, bucket=BUCKET_NAME, prefix=REVIEWS_PREFIX)
+    for item in resp_reviews:
+        key = item['Key']
+        if key.endswith(".csv"):
+            process_reviews_csv(s3_client, db_conn, cursor, key)
+                
+    print("Noice")
     cursor.close()
     db_conn.close()
 
