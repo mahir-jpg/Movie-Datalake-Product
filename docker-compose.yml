@@ -12,7 +12,6 @@ services:
       - DATA_DIR=/var/lib/localstack/data
     volumes:
       - ./localstack_data:/var/lib/localstack  # Persistance locale
-    
 
   # 2. MySQL : base relationnelle pour la couche Staging
   mysql:
@@ -26,9 +25,21 @@ services:
       - MYSQL_PASSWORD=password
     volumes:
       - ./mysql_data:/var/lib/mysql
-    
 
-  # 3. Elasticsearch : moteur de recherche pour la couche Curated
+  # 3. PostgreSQL : base pour les métadonnées Airflow
+  postgres:
+    image: postgres:15
+    container_name: postgres
+    environment:
+      - POSTGRES_USER=airflow
+      - POSTGRES_PASSWORD=airflow
+      - POSTGRES_DB=airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./postgres_data:/var/lib/postgresql/data
+
+  # 4. Elasticsearch : moteur de recherche pour la couche Curated
   elasticsearch:
     image: docker.elastic.co/elasticsearch/elasticsearch:8.6.0
     environment:
@@ -40,9 +51,98 @@ services:
       - "9200:9200"   # REST API Elasticsearch
       - "9300:9300"   # Communication interne (cluster)
     volumes:
-      - ./es_data:/usr/share/elasticsearch/data
+      - es_data:/usr/share/elasticsearch/data
+
+  # 5. Airflow Webserver
+  airflow-webserver:
+    build: .
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    image: apache/airflow:2.7.1
+    container_name: airflow-webserver
+    depends_on:
+      - postgres
+      - elasticsearch
+    environment:
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW__WEBSERVER__SECRET_KEY=your_secret_key_here
+      # Alignez ces UID/GID avec ceux du Codespace (généralement 1000:1000)
+      - AIRFLOW_UID=1000
+      - AIRFLOW_GID=1000
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./plugins:/opt/airflow/plugins
+      - ./src:/opt/airflow/scripts
+      - ./build:/opt/airflow/build
+      - airflow_logs:/opt/airflow/logs
+    ports:
+      - "8081:8080"
+    command: webserver
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 60s
+      retries: 5
+
+  # 6. Airflow Scheduler
+  airflow-scheduler:
+    build: .
+    deploy:
+      resources:
+        limits:
+          memory: 4G
+    image: apache/airflow:2.7.1
+    container_name: airflow-scheduler
+    depends_on:
+      - airflow-webserver
+      - postgres
+    environment:
+      - AIRFLOW__CORE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+      - AIRFLOW_UID=1000
+      - AIRFLOW_GID=1000
+    volumes:
+      - ./dags:/opt/airflow/dags
+      - ./plugins:/opt/airflow/plugins
+      - ./src:/opt/airflow/scripts
+      - ./build:/opt/airflow/build
+      - airflow_logs:/opt/airflow/logs
+    command: scheduler
+
+  airflow-init:
+    build: .
+    image: apache/airflow:2.7.1
+    container_name: airflow-init
+    depends_on:
+      - postgres  # S'assure que PostgreSQL est démarré
+    environment:
+      - AIRFLOW__DATABASE__SQL_ALCHEMY_CONN=postgresql+psycopg2://airflow:airflow@postgres/airflow
+
+      - AIRFLOW__CORE__EXECUTOR=LocalExecutor
+
+      # Indique au conteneur init de faire un upgrade de la DB et de créer un utilisateur
+      - _AIRFLOW_DB_UPGRADE=true
+      - _AIRFLOW_WWW_USER_CREATE=true
+      - _AIRFLOW_WWW_USER_USERNAME=airflow
+      - _AIRFLOW_WWW_USER_PASSWORD=airflow
+
+      # Optionnel : aligner l'utilisateur dans le conteneur avec celui de Codespaces
+      - AIRFLOW_UID=1000
+      - AIRFLOW_GID=1000
+    command: version  
+    volumes:
+    - ./dags:/opt/airflow/dags
+    - ./plugins:/opt/airflow/plugins
+    - ./src:/opt/airflow/scripts
+    - ./build:/opt/airflow/build
+
 
 volumes:
   localstack_data:
   mysql_data:
   es_data:
+  airflow_logs:
+  postgres_data:

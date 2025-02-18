@@ -7,7 +7,7 @@ import mysql.connector
 
 # Paramètres de connexion MySQL
 #############################################
-DB_HOST = "localhost"
+DB_HOST = "mysql"
 DB_USER = "user"
 DB_PASSWORD = "password"
 DB_NAME = "staging_db"
