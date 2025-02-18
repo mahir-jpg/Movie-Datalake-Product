@@ -18,20 +18,23 @@ bash scripts/script.sh
 python build/unpack_to_raw.py --bucket raw --endpoint http://localhost:4566
 ```
 
+```bash
+aws --endpoint-url=http://localhost:4566 s3 rm s3://raw --recursive
+```
+
 4. Setup the database
 ```bash
 mysql -h 127.0.0.1 -P 3306 -u user -ppassword < "sql scripts"/init.sql
 ```
 
 5. Extract from raw to staging
-```bash
-
-```
 
 ```bash
 mysql -h 127.0.0.1 -P 3306 -u user -ppassword
 ```
 
 ```bash
-aws --endpoint-url=http://localhost:4566 s3 rm s3://raw --recursive
+Use staging_db;
+Select * from movies limit 100;
 ```
+

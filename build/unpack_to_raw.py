@@ -5,6 +5,8 @@ from pathlib import Path
 
 import boto3
 from huggingface_hub import snapshot_download
+import os
+os.environ["HF_HUB_DEFAULT_TIMEOUT"] = "60"
 
 # Repo Huggingface contenant les données
 REPO_ID = "MansaT/Movie-Dataset"
@@ -35,7 +37,8 @@ def download_and_upload_raw(bucket: str, endpoint: str, only_csv: bool = True):
         endpoint (str): URL de l'endpoint (ex: LocalStack).
         only_csv (bool): Si True, ne télécharge que les fichiers CSV.
     """
-    s3_client = boto3.client("s3", endpoint_url=endpoint)
+    s3_client = boto3.client("s3", endpoint_url=endpoint, aws_access_key_id="test",
+    aws_secret_access_key="test")
 
     # Répertoire local temporaire (cache)
     local_cache_dir = "./hf_cache"
