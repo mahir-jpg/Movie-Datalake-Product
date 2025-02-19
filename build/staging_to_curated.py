@@ -3,7 +3,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
 # -- PARAMÈTRES MYSQL (Staging) --
-MYSQL_HOST = "127.0.0.1"
+MYSQL_HOST = "mysql"
 MYSQL_PORT = 3306
 MYSQL_USER = "user"
 MYSQL_PASSWORD = "password"

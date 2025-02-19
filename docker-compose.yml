@@ -75,7 +75,7 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./plugins:/opt/airflow/plugins
-      - ./src:/opt/airflow/scripts
+      - ./scripts:/opt/airflow/scripts
       - ./build:/opt/airflow/build
       - airflow_logs:/opt/airflow/logs
     ports:
@@ -107,7 +107,7 @@ services:
     volumes:
       - ./dags:/opt/airflow/dags
       - ./plugins:/opt/airflow/plugins
-      - ./src:/opt/airflow/scripts
+      - ./scripts:/opt/airflow/scripts
       - ./build:/opt/airflow/build
       - airflow_logs:/opt/airflow/logs
     command: scheduler
@@ -136,7 +136,7 @@ services:
     volumes:
     - ./dags:/opt/airflow/dags
     - ./plugins:/opt/airflow/plugins
-    - ./src:/opt/airflow/scripts
+    - ./scripts:/opt/airflow/scripts
     - ./build:/opt/airflow/build
 
 

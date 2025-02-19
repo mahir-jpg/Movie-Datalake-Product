@@ -19,7 +19,7 @@ aws configure set default.region us-east-1
 
 # Création des buckets S3 (raw, staging, curated)
 echo "Création du bucket S3: raw..."
-aws --endpoint-url=http://localhost:4566 s3 mb s3://raw
+aws --endpoint-url=http://localstack:4566 s3 mb s3://raw
 
 echo "Bucket créé avec succès !"
 

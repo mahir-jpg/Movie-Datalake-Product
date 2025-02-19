@@ -7,8 +7,9 @@ RUN pip install --no-cache-dir \
     boto3 \
     huggingface_hub \
     mysql-connector-python \
-    elasticsearch
+    elasticsearch \
+    awscli
 
-# Si besoin, copier vos DAGs et scripts dans l'image (facultatif, selon votre workflow)
+# Si besoin, copier vos DAGs et scripts dans l'image 
 # COPY dags /opt/airflow/dags
 # COPY build /opt/airflow/build

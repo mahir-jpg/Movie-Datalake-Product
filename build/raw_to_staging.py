@@ -15,7 +15,7 @@ DB_NAME = "staging_db"
 
 # Paramètres pour LocalStack (S3)
 #############################################
-S3_ENDPOINT_URL = "http://localhost:4566"
+S3_ENDPOINT_URL = "http://localstack:4566"
 AWS_ACCESS_KEY_ID = "root"
 AWS_SECRET_ACCESS_KEY = "root"
 BUCKET_NAME = "raw"

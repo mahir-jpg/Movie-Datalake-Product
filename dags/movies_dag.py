@@ -18,6 +18,12 @@ with DAG(
     catchup=False
 ) as dag:
 
+    #tâche création de la bucket 
+    bucket_creation = BashOperator(
+    task_id='bucket_creation',
+    bash_command='/opt/airflow/scripts/script.sh '
+    )
+
     # Tâche : Exécuter python /opt/airflow/build/unpack_to_raw.py
     unpack_to_raw_task = BashOperator(
         task_id='unpack_to_raw',

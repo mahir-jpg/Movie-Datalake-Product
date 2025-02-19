@@ -19,7 +19,7 @@ python build/unpack_to_raw.py --bucket raw --endpoint http://localhost:4566
 ```
 
 ```bash
-aws --endpoint-url=http://localhost:4566 s3 rm s3://raw --recursive
+aws --endpoint-url=http://localhost:4566 s3  s3://raw --recursive
 ```
 
 4. Setup the database
@@ -38,3 +38,6 @@ Use staging_db;
 Select * from movies limit 100;
 ```
 
+```bash
+aws --endpoint-url=http://localhost:4566 s3  s3://raw --recursive
+```
