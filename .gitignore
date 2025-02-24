@@ -7,3 +7,5 @@ env/
 localstack_data/
 mysql_data/
 es_data/
+postgres_data/
+plugins/

@@ -3,3 +3,4 @@ huggingface_hub
 mysql-connector-python
 apache-airflow
 elasticsearch
+awscli

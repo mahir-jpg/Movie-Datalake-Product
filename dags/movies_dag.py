@@ -45,4 +45,4 @@ with DAG(
     )
 
 # Définir l'ordre des tâches
-unpack_to_raw_task >> transform_task >> load_task
+bucket_creation >> unpack_to_raw_task >> transform_task >> load_task
