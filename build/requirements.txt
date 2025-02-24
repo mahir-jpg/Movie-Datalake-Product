@@ -4,3 +4,5 @@ mysql-connector-python
 apache-airflow
 elasticsearch
 awscli
+fastapi
+uvicorn
