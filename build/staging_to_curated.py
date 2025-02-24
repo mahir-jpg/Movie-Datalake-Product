@@ -3,7 +3,7 @@ from elasticsearch import Elasticsearch
 from elasticsearch.helpers import bulk
 
 # -- PARAMÈTRES MYSQL (Staging) --
-MYSQL_HOST = "localhost"
+MYSQL_HOST = "mysql"
 MYSQL_PORT = 3306
 MYSQL_USER = "user"
 MYSQL_PASSWORD = "password"
@@ -11,7 +11,7 @@ MYSQL_DATABASE = "staging_db"
 MYSQL_TABLE = "movies"
 
 # -- PARAMÈTRES ELASTICSEARCH (Curated) --
-ES_HOST = "http://localhost:9200"
+ES_HOST = "http://elasticsearch:9200"
 ES_INDEX_NAME = "my_curated_index"
 
 
