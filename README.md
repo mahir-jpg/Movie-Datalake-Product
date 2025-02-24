@@ -3,7 +3,14 @@ Datalake and ingestion Project
 AWS CLI is required
 mysql-client is required
 
+
+
+
 1. Start the containers
+```bash
+docker-compose build
+```
+
 ```bash
 docker-compose up -d
 ```
