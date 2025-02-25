@@ -48,3 +48,19 @@ Select * from movies limit 100;
 ```bash
 aws --endpoint-url=http://localhost:4566 s3  s3://raw --recursive
 ```
+
+6. Access to APIs:
+```bash
+cd api
+uvicorn api:app --host 0.0.0.0 --port 8000 --reload
+```
+• /raw: Access to raw data
+
+• /staging: Access to intermediate data
+
+• /curated: Access to final data
+
+• /health: Checking the status of services
+
+• /stats: Metrics on the filling of buckets and databases
+
