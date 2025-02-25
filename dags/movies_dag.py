@@ -50,5 +50,11 @@ with DAG(
     dag=dag,
     )
 
+    #tâche mise en route de l'api 
+    start_api = BashOperator(
+    task_id='start_api',
+    bash_command='uvicorn api:app --host 0.0.0.0 --port 8000 --reload --app-dir api'
+    )
+
 # Définir l'ordre des tâches
-mysql_db_creation >> bucket_creation >> unpack_to_raw_task >> transform_task >> load_task
+mysql_db_creation >> bucket_creation >> unpack_to_raw_task >> transform_task >> load_task >> start_api
