@@ -8,16 +8,15 @@ MYSQL_PORT = 3306
 MYSQL_USER = "user"
 MYSQL_PASSWORD = "password"
 MYSQL_DATABASE = "staging_db"
-MYSQL_TABLE = "movies"
 
-# -- PARAMÈTRES ELASTICSEARCH (Curated) --
+# -- PARAMÈTRES ELASTICSEARCH (Gold) --
 ES_HOST = "http://elasticsearch:9200"
-ES_INDEX_NAME = "my_curated_index"
+MOVIES_INDEX = "movies_index"
+REVIEWS_INDEX = "reviews_index"
 
-
-def fetch_data_from_mysql():
+def fetch_data_from_mysql(table_name):
     """
-    Se connecte à la base MySQL (staging) et récupère toutes les lignes
+    Se connecte à la base MySQL et récupère toutes les lignes
     de la table spécifiée.
     """
     cnx = mysql.connector.connect(
@@ -28,62 +27,59 @@ def fetch_data_from_mysql():
         database=MYSQL_DATABASE
     )
     cursor = cnx.cursor(dictionary=True)
-
-    query = f"SELECT * FROM {MYSQL_TABLE}"
+    query = f"SELECT * FROM {table_name}"
     cursor.execute(query)
     rows = cursor.fetchall()
-
     cursor.close()
     cnx.close()
-
     return rows
 
-
-def transform_data(data):
+def transform_movies(data):
     """
-    Ici, vous pouvez appliquer toutes vos transformations / nettoyages 
-    sur les documents avant de les indexer dans Elasticsearch.
+    Transforme les données des films si nécessaire.
+    Exemple : Création d'un champ 'combined_title'.
     """
-    # EXEMPLE de transformation :
-    # for doc in data:
-    #     doc["combined_title"] = f"{doc['title']} ({doc['year']})"
-
+    for doc in data:
+        if "title" in doc and "year" in doc:
+            doc["combined_title"] = f"{doc['title']} ({doc['year']})"
+        else:
+            doc["combined_title"] = doc.get("title", "")
     return data
 
-
-def index_data_into_es(data):
+def transform_reviews(data):
     """
-    Indexe (insère) un ensemble de documents (data) dans Elasticsearch via l'API bulk.
+    Transforme les données des critiques si nécessaire.
+    Exemple : Calcul de la longueur du texte de la critique.
+    """
+    for doc in data:
+        doc["review_length"] = len(doc["review_text"]) if "review_text" in doc else 0
+    return data
+
+def index_data_into_es(data, index_name):
+    """
+    Indexe un ensemble de documents dans Elasticsearch via l'API bulk.
     """
     es = Elasticsearch(ES_HOST)
-
     # Crée l'index s'il n'existe pas déjà
-    if not es.indices.exists(index=ES_INDEX_NAME):
-        es.indices.create(index=ES_INDEX_NAME)
-
-    # Préparation des actions pour le bulk
-    actions = []
-    for doc in data:
-        actions.append({
-            "_index": ES_INDEX_NAME,
-            "_source": doc
-        })
-
-    # Ingestion en bulk
+    if not es.indices.exists(index=index_name):
+        es.indices.create(index=index_name)
+    # Prépare les actions pour le bulk
+    actions = [{"_index": index_name, "_source": doc} for doc in data]
     success, _ = bulk(es, actions)
-    print(f"Indexed {success} documents in index '{ES_INDEX_NAME}'.")
-
+    print(f"Indexed {success} documents in index '{index_name}'.")
 
 def main():
-    # 1) Récupérer la donnée depuis MySQL (staging)
-    data = fetch_data_from_mysql()
-
-    # 2) Transformer les données si besoin (cette étape est optionnelle, mais c'est ici qu'on peut faire du "curated")
-    data = transform_data(data)
-
-    # 3) Indexer les données dans Elasticsearch (curated)
-    index_data_into_es(data)
-
+    # 1) Récupérer les données depuis MySQL pour les films et les critiques
+    movies = fetch_data_from_mysql("movies")
+    reviews = fetch_data_from_mysql("reviews")
+    
+    # 2) Transformer les données
+    movies = transform_movies(movies)
+    reviews = transform_reviews(reviews)
+    
+    # 3) Indexer les données dans Elasticsearch (Gold)
+    index_data_into_es(movies, MOVIES_INDEX)
+    index_data_into_es(reviews, REVIEWS_INDEX)
 
 if __name__ == "__main__":
     main()
