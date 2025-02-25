@@ -19,29 +19,29 @@ with DAG(
 ) as dag:
 
     #tâche création de la bucket 
-    bucket_creation = BashOperator(
-    task_id='bucket_creation',
-    bash_command='/opt/airflow/scripts/script.sh '
-    )
+   # bucket_creation = BashOperator(
+  #  task_id='bucket_creation',
+ #   bash_command='/opt/airflow/scripts/script.sh '
+#    )
 
     # Tâche : Exécuter python /opt/airflow/build/unpack_to_raw.py
-    unpack_to_raw_task = BashOperator(
-        task_id='unpack_to_raw',
-        bash_command='python /opt/airflow/build/unpack_to_raw.py --bucket raw --endpoint http://localstack:4566'
-    )
+   # unpack_to_raw_task = BashOperator(
+  #      task_id='unpack_to_raw',
+ #       bash_command='python /opt/airflow/build/unpack_to_raw.py --bucket raw --endpoint http://localstack:4566'
+#    )
 
     #tâche création de la bucket 
-    mysql_db_creation = BashOperator(
-    task_id='mysql_db_creation',
-    bash_command='mysql -h mysql -P 3306 -u user -ppassword < /opt/airflow/sql_scripts/init.sql'
-    )
+   # mysql_db_creation = BashOperator(
+  #  task_id='mysql_db_creation',
+ #   bash_command='mysql -h mysql -P 3306 -u user -ppassword < /opt/airflow/sql_scripts/init.sql'
+#    )
 
     # Tâche 2: Transformation vers MySQL
-    transform_task = BashOperator(
-    task_id='preprocess_to_staging',
-    bash_command='python /opt/airflow/build/raw_to_staging.py',
-    dag=dag,
-    )
+#    transform_task = BashOperator(
+   # task_id='preprocess_to_staging',
+  #  bash_command='python /opt/airflow/build/raw_to_staging.py',
+ #   dag=dag,
+#    )
 
 # Tâche 3: Chargement vers elasticsearch
     load_task = BashOperator(
@@ -57,4 +57,6 @@ with DAG(
     )
 
 # Définir l'ordre des tâches
-mysql_db_creation >> bucket_creation >> unpack_to_raw_task >> transform_task >> load_task >> start_api
+#mysql_db_creation >> bucket_creation >> unpack_to_raw_task >> transform_task >> 
+
+load_task >> start_api
