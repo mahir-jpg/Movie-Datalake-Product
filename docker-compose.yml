@@ -79,6 +79,7 @@ services:
       - ./build:/opt/airflow/build
       - airflow_logs:/opt/airflow/logs
       - ./sql_scripts:/opt/airflow/sql_scripts
+      - ./api:/opt/airflow/api
 
     ports:
       - "8081:8080"
@@ -113,6 +114,7 @@ services:
       - ./build:/opt/airflow/build
       - airflow_logs:/opt/airflow/logs
       - ./sql_scripts:/opt/airflow/sql_scripts
+      - ./api:/opt/airflow/api
 
     command: scheduler
 
@@ -143,6 +145,7 @@ services:
     - ./scripts:/opt/airflow/scripts
     - ./build:/opt/airflow/build
     - ./sql_scripts:/opt/airflow/sql_scripts
+    - ./api:/opt/airflow/api
 
 
 volumes:

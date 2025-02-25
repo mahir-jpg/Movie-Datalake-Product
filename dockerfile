@@ -8,7 +8,9 @@ RUN pip install --no-cache-dir \
     huggingface_hub \
     mysql-connector-python \
     elasticsearch \
-    awscli
+    awscli \
+    uvicorn \
+    fastapi
 
 # Si besoin, copier vos DAGs et scripts dans l'image 
 # COPY dags /opt/airflow/dags
