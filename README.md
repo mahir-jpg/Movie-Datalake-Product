@@ -4,7 +4,10 @@ AWS CLI is required
 mysql-client is required
 
 
-
+0. Downloading python libraries
+```bash
+pip install -r build/requirements.txt
+```
 
 1. Start the containers
 ```bash
