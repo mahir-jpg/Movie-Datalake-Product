@@ -67,7 +67,16 @@ def index_data_into_es_streaming(es, data, index_name, batch_size=2000):
     if not es.indices.exists(index=index_name):
         es.indices.create(index=index_name)
     total_indexed = 0
-    actions = [{"_index": index_name, "_source": doc} for doc in data]
+    actions = [
+    {
+        "_op_type": "index",
+        "_index": index_name,
+        "_id": doc["film_title"] if index_name == MOVIES_INDEX else f"{doc['username']}_{doc['film_title']}",
+        "_source": doc
+    }
+    for doc in data
+]
+
     
     # Utilisation de streaming_bulk pour indexer en batch.
     # streaming_bulk retourne un générateur qui renvoie (ok, info) pour chaque document indexé.
