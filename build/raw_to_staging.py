@@ -125,7 +125,7 @@ def bulk_insert_reviews(review_rows, film_title, cursor):
         values.extend(row + (film_title,))
 
     sql = """
-    INSERT INTO reviews (
+    INSERT IGNORE INTO reviews (
         username, rating, helpful, total, date, title, review, film_title
     )
     VALUES 
