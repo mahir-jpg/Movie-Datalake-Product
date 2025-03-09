@@ -24,7 +24,6 @@ CREATE TABLE IF NOT EXISTS reviews (
     date VARCHAR(50),
     title TEXT,
     review TEXT,
-    PRIMARY KEY (username, film_title),  
-    FOREIGN KEY (film_title) REFERENCES movies(film_title) ON DELETE CASCADE
+    PRIMARY KEY (username, film_title)
 );
 

@@ -6,3 +6,5 @@ elasticsearch
 awscli
 fastapi
 uvicorn
+streamlit
+requests
