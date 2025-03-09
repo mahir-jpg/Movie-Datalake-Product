@@ -67,3 +67,14 @@ uvicorn api:app --host 0.0.0.0 --port 8000 --reload
 
 • /stats: Metrics on the filling of buckets and databases
 
+7. Api for the ingest
+```bash
+cd api
+uvicorn ingest:app --host 0.0.0.0 --port 8000 --reload
+```
+
+in an other terminal
+```bash
+cd api
+streamlit run interface.py
+```

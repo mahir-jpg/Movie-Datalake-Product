@@ -4,6 +4,7 @@ import boto3
 import csv
 import io
 from uuid import uuid4
+from datetime import datetime
 
 app = FastAPI()
 
@@ -49,6 +50,7 @@ class Review(BaseModel):
     date: str
     title: str
     review: str
+    movie_title: str
 
 def create_csv_content(header: list, row: list) -> str:
     """
@@ -64,6 +66,7 @@ def create_csv_content(header: list, row: list) -> str:
 def ingest_movie(movie: Movie):
     """
     Endpoint pour ingérer les données d'un film dans le dossier "1_movies_per_genre_raw".
+    Le nom du fichier sera basé sur le titre du film + timestamp.
     """
     try:
         movie_data = movie.dict()
@@ -71,23 +74,39 @@ def ingest_movie(movie: Movie):
         header = ["name", "year", "movie_rated", "run_length", "genres", "release_date", "rating", "num_raters", "num_reviews", "review_url"]
         row = [movie_data[col] for col in header]
         csv_content = create_csv_content(header, row)
-        file_key = f"1_movies_per_genre/{uuid4()}.csv"
+
+        # Générer un timestamp pour le nom du fichier
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        movie_name = movie_data['name']
+        year = movie_data['year']
+        file_key = f"1_movies_per_genre/{movie_name} ({year})_{timestamp}.csv"  # Nom du fichier basé sur le titre + timestamp
+
+        # Sauvegarder le fichier dans le bucket S3
         s3.put_object(Bucket=S3_BUCKET, Key=file_key, Body=csv_content.encode("utf-8"))
         return {"message": "Données du film ingérées avec succès", "key": file_key}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+
 @app.post("/ingest/review")
 def ingest_review(review: Review):
     """
     Endpoint pour ingérer les données d'une critique dans le dossier "2_reviews_per_movie_raw".
+    Le nom du fichier sera basé sur le titre du film + timestamp.
     """
     try:
         review_data = review.dict()
-        header = ["username", "rating", "helpful", "total", "date", "title", "review"]
+        # Définir les en-têtes CSV attendus
+        header = ["username", "rating", "helpful", "total", "date", "title", "review", "movie_title"]
         row = [review_data[col] for col in header]
         csv_content = create_csv_content(header, row)
-        file_key = f"2_reviews_per_movie_raw/{uuid4()}.csv"
+
+        # Générer un timestamp pour le nom du fichier
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        movie_title = review_data['movie_title']
+        file_key = f"2_reviews_per_movie_raw/{movie_title}_{timestamp}.csv"
+
+        # Sauvegarder le fichier dans le bucket S3
         s3.put_object(Bucket=S3_BUCKET, Key=file_key, Body=csv_content.encode("utf-8"))
         return {"message": "Données de la critique ingérées avec succès", "key": file_key}
     except Exception as e:
