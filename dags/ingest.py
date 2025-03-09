@@ -25,5 +25,11 @@ with DAG(
         dag=dag,
     )
 
+    load = BashOperator(
+        task_id='preprocess_to_curated',
+        bash_command='python /opt/airflow/scripts_ingest/staging_to_curated_ingest.py',
+        dag=dag,
+    )
+
   
-transform_task 
+transform_task >> load
