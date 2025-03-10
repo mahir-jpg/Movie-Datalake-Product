@@ -10,7 +10,7 @@ default_args = {
 }
 
 with DAG(
-    'ingest_dag',
+    'ingest_fast_dag',
     default_args=default_args,
     description='DAG pour ingestion et transformation des données',
     schedule_interval=None,  # désactivé pour un run manuel
@@ -21,15 +21,9 @@ with DAG(
   
     transform_task = BashOperator(
         task_id='preprocess_to_staging',
-        bash_command='python /opt/airflow/scripts_ingest/raw_to_staging_ingest.py',
+        bash_command='python /opt/airflow/scripts_ingest/raw_to_staging_ingest_fast.py',
         dag=dag,
     )
-
-    #load = BashOperator(
-     #   task_id='preprocess_to_curated',
-      #  bash_command='python /opt/airflow/scripts_ingest/staging_to_curated_ingest.py',
-       # dag=dag,
-    #)
 
   
 transform_task 

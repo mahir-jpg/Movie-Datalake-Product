@@ -4,6 +4,7 @@ import os
 import boto3
 import mysql.connector
 import time
+import io
 
 # Paramètres MySQL
 DB_HOST = "mysql"
@@ -24,8 +25,9 @@ REVIEWS_PREFIX = "2_reviews_per_movie_raw/"
 # Regex pour capturer les fichiers avec timestamp suffixe (_YYYYMMDD_HHMMSS.csv)
 TIMESTAMP_PATTERN = re.compile(r".+_\d{8}_\d{6}\.csv$")
 
-# Taille du batch pour le bulk insert des reviews
-CHUNK_SIZE = 5000
+# Taille des batchs
+MOVIE_BATCH_SIZE = 100
+REVIEW_BATCH_SIZE = 5000
 
 
 def get_db_connection():
@@ -50,25 +52,8 @@ def get_s3_client():
 
 # ----- INSERTION DES FILMS -----
 
-def insert_movie(row, cursor):
-    """Insère un film dans la table 'movies'"""
-    name = row[0].strip()
-    year = row[1].strip()
-
-    if not name or not year:
-        return  # Skip ligne invalide
-
-    film_title = f"{name} {year}"  # Fusion name + year
-
-    movie_rated = row[2].strip()
-    run_length = row[3].strip()
-    genres = row[4].strip()
-    release_date = row[5].strip()
-    rating = float(row[6]) if row[6] else None
-    num_raters = int(row[7]) if row[7] else None
-    num_reviews = int(row[8]) if row[8] else None
-    review_url = row[9].strip() if row[9] else None
-
+def insert_movies(movie_rows, cursor):
+    """Insère plusieurs films en une seule requête avec executemany()"""
     sql = """
         INSERT INTO movies (
             film_title, movie_rated, run_length, genres, 
@@ -77,53 +62,69 @@ def insert_movie(row, cursor):
         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         ON DUPLICATE KEY UPDATE rating = VALUES(rating);
     """
-    cursor.execute(sql, (
-        film_title, movie_rated, run_length, genres,
-        release_date, rating, num_raters, num_reviews, review_url
-    ))
+    cursor.executemany(sql, movie_rows)
 
 
-def process_movies_csv(s3_client, db_cursor, key):
+def process_movies_csv(s3_client, db_conn, cursor, key):
     """Traite un fichier CSV de films"""
     print(f"--- Traitement du CSV (movies): s3://{BUCKET_NAME}/{key}")
     obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=key)
-    content = obj["Body"].read().decode("utf-8").splitlines()
+    content = io.StringIO(obj["Body"].read().decode("utf-8"))
 
     reader = csv.reader(content)
     next(reader, None)  # Skip l'en-tête
 
+    batch = []
     for row in reader:
         if len(row) < 10:
             continue
-        insert_movie(row, db_cursor)
+        
+        name = row[0].strip()
+        year = row[1].strip()
+        if not name or not year:
+            continue  # Skip ligne invalide
+
+        film_title = f"{name} {year}"
+        movie_rated = row[2].strip()
+        run_length = row[3].strip()
+        genres = row[4].strip()
+        release_date = row[5].strip()
+        rating = float(row[6]) if row[6] else None
+        num_raters = int(row[7]) if row[7] else None
+        num_reviews = int(row[8]) if row[8] else None
+        review_url = row[9].strip() if row[9] else None
+
+        batch.append((
+            film_title, movie_rated, run_length, genres,
+            release_date, rating, num_raters, num_reviews, review_url
+        ))
+
+        if len(batch) >= MOVIE_BATCH_SIZE:
+            insert_movies(batch, cursor)
+            db_conn.commit()
+            batch.clear()
+
+    if batch:
+        insert_movies(batch, cursor)
+        db_conn.commit()
 
 
 # ----- INSERTION DES REVIEWS -----
 
-def bulk_insert_reviews(review_rows, film_title, cursor):
-    """Effectue un INSERT en bulk pour toutes les reviews"""
+def bulk_insert_reviews(review_rows, cursor):
+    """Effectue un INSERT en bulk pour toutes les reviews avec executemany()"""
     if not review_rows:
         return
 
-    placeholders = []
-    values = []
-    for row in review_rows:
-        placeholders.append("(%s, %s, %s, %s, %s, %s, %s, %s)")
-        values.extend(row + (film_title,))
-    
-    
-
     sql = """
-    INSERT IGNORE INTO reviews (
-        username, rating, helpful, total, date, title, review, film_title
-    )
-    VALUES 
-    """ + ",".join(placeholders)
-
-    cursor.execute(sql, tuple(values))
+        INSERT IGNORE INTO reviews (
+            username, rating, helpful, total, date, title, review, film_title
+        ) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);
+    """
+    cursor.executemany(sql, review_rows)
 
 
-def process_reviews_csv(s3_client, db_conn, db_cursor, key):
+def process_reviews_csv(s3_client, db_conn, cursor, key):
     """Traite un fichier CSV de reviews"""
     file_name = os.path.basename(key)
     film_title = re.sub(r"\.csv$", "", file_name, flags=re.IGNORECASE)
@@ -132,7 +133,7 @@ def process_reviews_csv(s3_client, db_conn, db_cursor, key):
     print(f"      -> film_title = '{film_title}'")
 
     obj = s3_client.get_object(Bucket=BUCKET_NAME, Key=key)
-    content = obj["Body"].read().decode("utf-8").splitlines()
+    content = io.StringIO(obj["Body"].read().decode("utf-8"))
 
     reader = csv.reader(content)
     next(reader, None)  # Skip l'en-tête
@@ -150,36 +151,29 @@ def process_reviews_csv(s3_client, db_conn, db_cursor, key):
         title = row[5].strip()
         review = row[6].strip()
 
-        batch.append((username, rating, helpful, total, date, title, review))
+        batch.append((username, rating, helpful, total, date, title, review, film_title))
 
-        if len(batch) >= CHUNK_SIZE:
-            bulk_insert_reviews(batch, film_title, db_cursor)
+        if len(batch) >= REVIEW_BATCH_SIZE:
+            bulk_insert_reviews(batch, cursor)
             db_conn.commit()
             batch.clear()
 
     if batch:
-        bulk_insert_reviews(batch, film_title, db_cursor)
+        bulk_insert_reviews(batch, cursor)
         db_conn.commit()
 
+
 def list_all_objects(s3_client, bucket, prefix):
-    """
-    Retourne la liste complète (tous les objets) pour un Bucket/Prefix, en gérant la pagination s3 (list_objects_v2 est limitée a 1000 éléments)
-    """
+    """Récupère tous les objets S3 avec gestion de la pagination"""
     all_objects = []
     continuation_token = None
 
     while True:
+        params = {"Bucket": bucket, "Prefix": prefix}
         if continuation_token:
-            resp = s3_client.list_objects_v2(
-                Bucket=bucket,
-                Prefix=prefix,
-                ContinuationToken=continuation_token
-            )
-        else:
-            resp = s3_client.list_objects_v2(
-                Bucket=bucket,
-                Prefix=prefix
-            )
+            params["ContinuationToken"] = continuation_token
+
+        resp = s3_client.list_objects_v2(**params)
 
         if 'Contents' in resp:
             all_objects.extend(resp['Contents'])
@@ -191,6 +185,7 @@ def list_all_objects(s3_client, bucket, prefix):
 
     return all_objects
 
+
 # ----- MAIN -----
 
 def main():
@@ -200,23 +195,19 @@ def main():
     cursor = db_conn.cursor()
     s3_client = get_s3_client()
 
-    # 1) Charger les FILMS (insert ligne par ligne)
-    resp_movies = s3_client.list_objects_v2(Bucket=BUCKET_NAME, Prefix=MOVIES_PREFIX)
-    if "Contents" in resp_movies:
-        for item in resp_movies["Contents"]:
-            key = item["Key"]
-            if TIMESTAMP_PATTERN.match(key):
-                process_movies_csv(s3_client, cursor, key)
-                db_conn.commit()
+    # 1) Charger les FILMS (batch insert)
+    resp_movies = list_all_objects(s3_client, BUCKET_NAME, MOVIES_PREFIX)
+    for item in resp_movies:
+        key = item["Key"]
+        if TIMESTAMP_PATTERN.match(key):
+            process_movies_csv(s3_client, db_conn, cursor, key)
 
-    # 2) Charger les REVIEWS (bulk insert par batch)
+    # 2) Charger les REVIEWS (batch insert)
     resp_reviews = list_all_objects(s3_client, BUCKET_NAME, REVIEWS_PREFIX)
     for item in resp_reviews:
         key = item["Key"]
         if TIMESTAMP_PATTERN.match(key):
-            print("jsuis là")
             process_reviews_csv(s3_client, db_conn, cursor, key)
-
 
     print("\n🏁 Ingestion terminée en {:.2f} sec".format(time.time() - start_time))
     cursor.close()
