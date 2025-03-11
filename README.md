@@ -46,7 +46,7 @@ pip install -r build/requirements.txt
    docker compose up -d  
    ```  
 
-3. Accéder à l’interface web d’Airflow via un navigateur en se rendant sur `http://localhost:8080`.  
+3. Accéder à l’interface web d’Airflow via un navigateur en se rendant sur `http://localhost:8081`.  
 
 4. Exécuter le DAG `build_process` dans l’interface d’Airflow. Ce DAG réalise les opérations suivantes :  
    - Création du bucket S3  
@@ -55,7 +55,7 @@ pip install -r build/requirements.txt
 
 5. Exécuter le DAG `movie_dag`, qui effectue les opérations suivantes :  
    - Chargement des données depuis le bucket S3 vers MySQL et Elasticsearch  
-   - Nettoyage, transformation et enrichissement des données  
+   - Nettoyage, transformation et enrichissement des données   
 
 Le pipeline est maintenant opérationnel et les données sont disponibles dans MySQL et Elasticsearch.  
 
@@ -82,7 +82,14 @@ Pour démarrer l’API d’ingestion :
 ```bash
 cd api  
 uvicorn ingest:app --host 0.0.0.0 --port 8000 --reload  
-```  
+```
+
+Vous pouvez accèder à une interface streamlite, en ouvrant un nouveau terminal :
+```bash
+cd api
+streamlit run interface.py
+```
+Cela permet d'ajouter des données avec une interface  pour movies ou reviews.
 
 ### API d’ingestion rapide  
 Une version optimisée de l’API d’ingestion est également disponible :  
@@ -101,6 +108,11 @@ Pour exécuter les tests :
 cd test_api  
 python ingest_test.py  
 python ingest_test_fast.py  
-```  
+```
 
-Ces scripts permettent de mesurer les temps de réponse et d’évaluer l’efficacité des différentes méthodes d’ingestion et de consultation des données.
+Ces scripts permettent de mesurer les temps de réponse et d’évaluer l’efficacité des différentes méthodes d’ingestion et de consultation des données. 
+
+Vous avez accès à un troisième DAG "ingest.py" :
+- Permettant d'ajouter les nouvelles données insérées dans la raw
+- Chargement des données depuis le bucket S3 vers MySQL et Elasticsearch  
+- Nettoyage, transformation et enrichissement des données  
