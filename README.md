@@ -27,6 +27,11 @@ Avant de lancer le projet, assurez-vous d’avoir les éléments suivants instal
 - Docker Compose  
 - Python 
 
+Ainsi que d'installer les librairies nécéssaires :
+```bash
+pip install -r build/requirements.txt 
+```  
+
 ## Installation et exécution  
 
 1. Cloner ce repository :  
