@@ -3,8 +3,8 @@ import time
 import random
 
 # URLs des endpoints
-MOVIE_URL = "http://localhost:8000/ingest/movie"  
-REVIEW_URL = "http://localhost:8000/ingest/review"
+MOVIE_URL = "http://localhost:8000/ingest_fast/movie"  
+REVIEW_URL = "http://localhost:8000/ingest_fast/review"
 
 # Exemple de données pour un film
 movie_data_template = {

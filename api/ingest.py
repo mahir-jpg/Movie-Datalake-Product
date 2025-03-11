@@ -15,8 +15,8 @@ S3_ENDPOINT = "http://localhost:4566"
 s3 = boto3.client(
     "s3",
     endpoint_url=S3_ENDPOINT,
-    aws_access_key_id="test",
-    aws_secret_access_key="test",
+    aws_access_key_id="root",
+    aws_secret_access_key="root",
     region_name="us-east-1"
 )
 
